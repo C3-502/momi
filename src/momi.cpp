@@ -1,9 +1,12 @@
-#include <iostream>
+#include "momi.h"
 
-using namespace std;
-
-int main(int argc, char *argv[])
+Momi::Momi(int conn_num, std::string output_path, std::string url)
+    :conn_num(conn_num), output_path(output_path), url(url)
 {
-    cout << "Hello World!" << endl;
-    return 0;
+
+}
+
+void Momi::run()
+{
+
 }
