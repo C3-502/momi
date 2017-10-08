@@ -1,38 +1,101 @@
 #include <iostream>
 #include <unistd.h>
 #include <string>
+#include <sstream>
+#include "./include/args.hxx"
 
+#include "define.h"
 #include "util.h"
+#include "momi_exception.h"
 #include "momi.h"
 
 int main(int argc, char *argv[])
 {
-    int conn_num=Util::getCpuCoreNum();
-    std::string output_path="./";
-    std::string url="";
-    int ch;
+    args::ArgumentParser parser("momi: cross-platform download accelerator", "");
+    args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
+    args::ValueFlag<int> conn_num(parser, "conn_num", "number of the connections", {'n'});
+    args::ValueFlag<std::string> output_path(parser, "output_path", "output path to save the file", {'o'});
+    args::Positional<std::string> url(parser, "url", "the download url");
 
-    while((ch = getopt(argc,argv,"n::o::")) != -1)
+    try
     {
-        switch(ch)
-        {
-        case 'n':
-            conn_num = atoi(argv[optind]);
-            break;
+        parser.ParseCLI(argc, argv);
 
-        case 'o':
-            output_path = std::string(argv[optind]);
-            break;
+        if (conn_num) {
+            std::stringstream ss;
+            ss<<args::get(conn_num);
+            std::string str = "-n = ";
+            str.append(ss.str());
+            writelog(str.c_str());
         }
+        if (output_path) {
+            std::stringstream ss;
+            ss<<args::get(output_path);
+            std::string str = "-o = ";
+            str.append(ss.str());
+            writelog(str.c_str());
+        }
+        if (url) {
+            std::stringstream ss;
+            ss<<args::get(url);
+            std::string str = "url = ";
+            str.append(ss.str());
+            writelog(str.c_str());
+        }
+
+        //修正参数信息
+        int conn_num_ = args::get(conn_num);
+        std::string url_ = args::get(url);
+        std::string output_path_ = args::get(output_path);
+        int protocol_ = Define::P_HTTP;
+
+        //从url中提取文件名
+        int pos = url_.find_last_of("/");
+        std::string filename_ = url_.substr(pos+1, -1);
+
+        pos = output_path_.find_last_of("/");
+        if(pos+1 < output_path_.size()){
+            //若指定了输出文件名，修正
+            filename_ = output_path_.substr(pos+1, -1);
+            output_path_ = output_path_.substr(0, pos+1);
+        }
+
+        //从url提取协议类型，待优化
+        pos = url_.find_first_of(":");
+        if(pos<url_.size()){
+            std::string protocol_str = url_.substr(0, pos);
+            if(protocol_str == "http"){
+                protocol_ = Define::P_HTTP;
+            }else if(protocol_str == "https"){
+                protocol_ = Define::P_HTTPS;
+            }else{
+                throw Momi_Exception("协议暂不支持");
+            }
+        }
+
+        Momi *momi = new Momi(conn_num_, output_path_, filename_, url_, protocol_);
+        momi->run();
+        return 0;
+
     }
-
-    url = std::string(argv[optind]);
-
-    std::cout<<"-n = "<<conn_num<<std::endl;
-    std::cout<<"-o = "<<output_path<<std::endl;
-    std::cout<<"url = "<<url<<std::endl;
-
-    Momi *momi = new Momi(conn_num, output_path, url);
-    momi->run();
-    return 0;
+    catch (args::Help)
+    {
+        std::cout << parser;
+        return 0;
+    }
+    catch (args::ParseError e)
+    {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        return 1;
+    }
+    catch (args::ValidationError e)
+    {
+        std::cerr << e.what() << std::endl;
+        std::cerr << parser;
+        return 1;
+    }
+    catch (const Momi_Exception &e) {
+        std::cerr << e.what() << std::endl;
+    }
 }
