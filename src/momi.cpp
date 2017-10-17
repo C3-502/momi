@@ -99,7 +99,6 @@ void Momi::extract_file_info()
         curl_easy_setopt(curl, CURLOPT_HEADER, 0L);
         curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
         curl_easy_setopt(curl, CURLOPT_FILETIME, 1L);
-        curl_easy_setopt(curl, CURLOPT_HEADER, 0L);
         res = curl_easy_perform(curl);
 
         if (res != CURLE_OK) {
