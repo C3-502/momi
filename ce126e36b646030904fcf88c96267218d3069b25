@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "6ab6b143_b9598895",
+        "filename": "src/util.h",
+        "patchSetId": 1
+      },
+      "lineNbr": 22,
+      "author": {
+        "id": 1012585
+      },
+      "writtenOn": "2017-10-17T15:37:35Z",
+      "side": 1,
+      "message": "改为namespace",
+      "range": {
+        "startLine": 19,
+        "startChar": 0,
+        "endLine": 22,
+        "endChar": 12
+      },
+      "revId": "ce126e36b646030904fcf88c96267218d3069b25",
+      "serverId": "d5d70762-12d0-45a1-890d-524b12d3f735",
+      "unresolved": false
+    }
+  ]
+}
