@@ -8,3 +8,5 @@ cd build
 cmake ..
 make
 ```
+
+# bugs
