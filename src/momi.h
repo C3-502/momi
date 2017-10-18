@@ -8,47 +8,38 @@
 #include "util.h"
 #include "connection.h"
 
+namespace momi {
+
 class Momi
 {
 public:
     Momi(int conn_num, std::string output_path, std::string filename, std::string url, int protocol);
 
-    Momi(const Momi&);
+    void init();
 
-    /**
-     * @brief extract_file_info 提取远程文件信息
-     */
-    void extract_file_info();
+    void run();
 
-    /**
-     * @brief local_check 本地文件检测，创建本地文件，以及下载恢复检测
-     */
+    void pause();
+
+    void resume();
+
     void local_check();
 
-    /**
-     * @brief generate_conns 生成连接对象
-     */
+    void remote_check();
+
     void generate_conns();
 
-    /**
-     * @brief one_curl_download 线程处理函数
-     */
-    static void * one_curl_download(void *conn);
+    void load_temp_info();
 
-    /**
-     * @brief process_data
-     * @param buffer
-     * @param size
-     * @param nmemb
-     * @param user_p
-     * @return
-     */
+    static void *thread_func(void *trans_p);
+
     static size_t process_data(void * buffer, size_t size, size_t nmemb, void *user_p);
 
-    /**
-     * @brief run 开始运行下载
-     */
-    void run();
+    //下载类型，新下载or恢复下载
+    DOWNLOAD_TYPE d_type;
+
+    //传输类型，支持多线程or单线程
+    TRANSFER_TYPE t_type;
 
 private:
     int conn_num;
@@ -56,18 +47,21 @@ private:
     std::string filename;
     std::string url;
     int protocol;
-    long long filesize=0;
+    u_int64_t filesize;
     std::vector<Connection*> conns;
     std::string filepath;
 };
 
-/**
- * @brief The transStruct struct
- * 每个连接每次处理接受到的数据时带过去的参数
- */
-struct transStruct {
+typedef struct {
   Connection *conn;
   std::ofstream *fp;
-};
+} Trans_Struct;
+
+typedef struct {
+    Connection* conn;
+    int index;
+} Args_Struct;
+
+}
 
 #endif // MOMI_H
