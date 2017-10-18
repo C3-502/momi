@@ -45,10 +45,10 @@ public:
     }
 
 private:
-    int start_byte=0;
-    int conn_size=0;
+    u_int64_t start_byte;
+    u_int64_t conn_size;
     std::string url;
-    int conn_id=0;
+    int conn_id;
     std::string filepath;
 };
 

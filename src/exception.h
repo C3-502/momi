@@ -7,13 +7,17 @@
 #include <stdexcept>
 #include <string>
 #include <iostream>
-#ifndef _MOMI_EXCEPTION_H
-#define _MOMI_EXCEPTION_H
-class Momi_Exception : public std::logic_error
+#ifndef _EXCEPTION_H
+#define _EXCEPTION_H
+namespace momi {
+
+class Exception : public std::logic_error
 {
 public:
-    explicit Momi_Exception(const char* msg) : std::logic_error(std::string(msg))
+    explicit Exception(const char* msg) : std::logic_error(std::string(msg))
     {
     }
 };
+
+}
 #endif

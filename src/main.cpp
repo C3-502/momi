@@ -6,7 +6,7 @@
 
 #include "define.h"
 #include "util.h"
-#include "momi_exception.h"
+#include "exception.h"
 #include "momi.h"
 
 int main(int argc, char *argv[])
@@ -26,21 +26,21 @@ int main(int argc, char *argv[])
             ss<<args::get(conn_num);
             std::string str = "-n = ";
             str.append(ss.str());
-            writelog(str.c_str());
+            momi::writelog(str.c_str());
         }
         if (output_path) {
             std::stringstream ss;
             ss<<args::get(output_path);
             std::string str = "-o = ";
             str.append(ss.str());
-            writelog(str.c_str());
+            momi::writelog(str.c_str());
         }
         if (url) {
             std::stringstream ss;
             ss<<args::get(url);
             std::string str = "url = ";
             str.append(ss.str());
-            writelog(str.c_str());
+            momi::writelog(str.c_str());
         }
 
         //修正参数信息
@@ -65,16 +65,19 @@ int main(int argc, char *argv[])
         if(pos<url_.size()){
             std::string protocol_str = url_.substr(0, pos);
             if(protocol_str == "http"){
-                protocol_ = Define::P_HTTP;
+                protocol_ = momi::PROTOCOLS::P_HTTP;
             }else if(protocol_str == "https"){
-                protocol_ = Define::P_HTTPS;
+                protocol_ = momi::PROTOCOLS::P_HTTPS;
             }else{
-                throw Momi_Exception("协议暂不支持");
+                throw momi::Exception("协议暂不支持");
             }
         }
 
-        Momi *momi = new Momi(conn_num_, output_path_, filename_, url_, protocol_);
-        momi->run();
+        momi::Momi *obj = new momi::Momi(conn_num_, output_path_, filename_, url_, protocol_);
+        obj->init();
+        obj->run();
+        //obj->pause();
+        //obj->resume();
         return 0;
 
     }
@@ -95,7 +98,7 @@ int main(int argc, char *argv[])
         std::cerr << parser;
         return 1;
     }
-    catch (const Momi_Exception &e) {
+    catch (const momi::Exception &e) {
         std::cerr << e.what() << std::endl;
     }
 }
