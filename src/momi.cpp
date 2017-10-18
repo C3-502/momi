@@ -37,7 +37,7 @@ void Momi::init()
  * 如果目录不存在，则创建目录，并创建文件，如果文件不存在，则创建文件；
  * other，若下载未完成，则恢复下载，若下载完成，则自增文件名。
  */
-void Momi::local_check()
+bool Momi::local_check()
 {
     std::string path = this->output_path;
     std::string filename = this->filename;
@@ -97,7 +97,7 @@ void Momi::local_check()
     return true;
 }
 
-void Momi::remote_check()
+bool Momi::remote_check()
 {
     CURL *curl;
     CURLcode res;
@@ -229,7 +229,7 @@ void * Momi::thread_func(void *args_ptr)
 }
 
 size_t Momi::process_data(void * buffer, size_t size, size_t nmemb, void *user_p) {
-    struct transStruct *trans = (struct transStruct *) user_p;
+    Trans_Struct *trans = (Trans_Struct *) user_p;
     size_t start_byte = trans->conn->get_start_byte();
     size_t transfer_size = size * nmemb;
     //定位本次写入位置
@@ -248,7 +248,7 @@ void Momi::run()
     pthread_t tid[this->conn_num];
     int error;
     for(int i=0; i<this->conn_num; i++){
-        Args_Struct *args_ptr = malloc(sizeof(Args_Struct));
+        Args_Struct *args_ptr = (Args_Struct *)malloc(sizeof(Args_Struct));
         args_ptr->conn = this->conns[i];
         args_ptr->index = i;
 

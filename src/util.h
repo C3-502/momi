@@ -18,6 +18,8 @@ namespace momi {
 
 #define writelog(str, ...) writelog_(str, __FILE__, __LINE__)
 
+#define min(x, y) (x<y) ? x : y
+#define max(x, y) (x>y) ? x : y
 
 /**
  * @brief get_cpu_core_num

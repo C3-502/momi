@@ -23,9 +23,9 @@ public:
 
     void resume();
 
-    void local_check();
+    bool local_check();
 
-    void remote_check();
+    bool remote_check();
 
     void generate_conns();
 
