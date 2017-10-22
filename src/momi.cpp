@@ -2,6 +2,7 @@
 #include <curl/curl.h>
 
 #include "momi.h"
+#include "loader.h"
 
 namespace momi
 {
@@ -243,8 +244,8 @@ size_t Momi::process_data(void * buffer, size_t size, size_t nmemb, void *user_p
 
 void Momi::run()
 {
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-
+    curl_global_init(CURL_GLOBAL_ALL);
+    
     pthread_t tid[this->conn_num];
     int error;
     for(int i=0; i<this->conn_num; i++){
@@ -265,6 +266,8 @@ void Momi::run()
         std::cout<<"连接"<<i<<"结束"<<std::endl;
     }
     curl_global_cleanup();
+    momi::Loader *loader = new HttpLoader(0, 32);
+    loader->run();
 }
 
 }

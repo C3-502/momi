@@ -32,3 +32,5 @@ build
 
 *.user
 /build/*
+/.idea/*
+/cmake-build-debug/

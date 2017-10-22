@@ -11,7 +11,6 @@
 #define MIN(x,y) ((x)<(y)?(x):(y))
 #define MAX(x,y) ((x)>(y)?(x):(y))
 
-
 namespace momi {
 
 enum PROTOCOLS { P_HTTP=1, P_HTTPS=2, FTP=3, BT=4 };
