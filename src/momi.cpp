@@ -8,8 +8,16 @@ namespace momi
 {
 
 Momi::Momi(int conn_num, std::string output_path, std::string filename, std::string url, int protocol)
-    :conn_num(conn_num), output_path(output_path), filename(filename), url(url), protocol(protocol)
+    :thread_num(thread_num), output_path(output_path), filename(filename), url(url), protocol(protocol)
 {
+}
+
+Momi::~Momi()
+{
+    if (this->tmpfile_fd)
+    {
+        close(this->tmpfile_fd);
+    }
 }
 
 void Momi::init()
@@ -17,85 +25,22 @@ void Momi::init()
     this->d_type = DOWNLOAD_TYPE::NEW_D;
     this->t_type = TRANSFER_TYPE::IS_MULTI;
 
-    if(local_check()) {
-        momi::writelog("local check success");
-    }
     if(remote_check()) {
         momi::writelog("remote check success");
     }
 
+    if(local_check()) {
+        momi::writelog("local check success");
+    }
+    
     if ( DOWNLOAD_TYPE::NEW_D == this->d_type) {
-        this->conn_num = (TRANSFER_TYPE::IS_MULTI == this->t_type) ? \
-                    MIN(this->conn_num, momi::MAX_THREAD_NUM) : 1;
+        this->thread_num = (TRANSFER_TYPE::IS_MULTI == this->t_type) ? \
+                    MIN(this->thread_num, momi::MAX_THREAD_NUM) : 1;
+        generate_tempfile_info();
         generate_conns();
     } else {
-        load_temp_info();
+        load_tempfile_info();
     }
-}
-
-/**
- * @brief Momi::local_check
- * 如果目录不存在，则创建目录，并创建文件，如果文件不存在，则创建文件；
- * other，若下载未完成，则恢复下载，若下载完成，则自增文件名。
- */
-bool Momi::local_check()
-{
-    std::string path = this->output_path;
-    std::string filename = this->filename;
-    u_int64_t filesize = this->filesize;
-
-    if (momi::is_dir_exist(path) == -1) {
-        //目录不存在，创建目录
-        #if _WIN32
-            _mkdir(path.c_str());
-        #else
-            mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-        #endif
-    }
-
-    std::string basefilepath = path + filename;
-    std::string filepath(basefilepath);
-    int file_counter = 0;
-    do {
-        std::ifstream fin(filepath.c_str());
-        if (!fin) {
-            //文件不存在,创建文件
-            //std::cout<<filepath<<std::endl;
-            std::ofstream fout(filepath.c_str());
-            if(!fout){
-                momi::writelog("文件创建失败");
-                return false;
-            }
-            fout.close();
-            break;
-        } else {
-            //文件存在，1）下载已完成，文件名递增；2）下载未完成，恢复下载
-            #if _WIN32
-                struct _stat sb;
-                if (_stat(filepath.c_str(), &sb) == 0) {
-            #else
-                struct stat sb;
-                if (stat(filepath.c_str(), &sb) == 0) {
-            #endif
-                    file_counter++;
-                    std::cout<<sb.st_size<<std::endl<<filesize<<std::endl;
-                    if (sb.st_size == filesize) {
-                        //下载完成
-                        filepath = basefilepath + std::string("(") + std::to_string(file_counter) + std::string(")");
-                        continue;
-                    } else{
-                        //下载未完成
-                        this->d_type = DOWNLOAD_TYPE::RESUME_D;
-                        momi::writelog("恢复下载");
-                        break;
-                    }
-                }
-        }
-    } while(true);
-
-    //缓存真正的输出文件
-    this->filepath = filepath;
-    return true;
 }
 
 bool Momi::remote_check()
@@ -105,16 +50,20 @@ bool Momi::remote_check()
     u_int64_t filesize = 0;
 
     curl = curl_easy_init();
-    if(curl) {
+    if (curl) {
         curl_easy_setopt(curl, CURLOPT_URL, this->url.c_str());
-
-        if (momi::SKIP_PEER_VERIFICATION) {
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+        //SSL
+        if (0 == (this->protocol % 2)) {
+            if (SKIP_SSL_VERIFY) {
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+            } else{
+                //todo
+                //curl_easy_setopt(curl, CURLOPT_CAINFO, "");
+                //curl_easy_setopt(curl, CURLOPT_CAPATH, "");
+            }   
         }
 
-        if (momi::SKIP_HOSTNAME_VERIFICATION) {
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-        }
 //分块支持检测
 //        struct curl_slist *list = NULL;
 //        list = curl_slist_append(list, "");
@@ -132,10 +81,49 @@ bool Momi::remote_check()
         res = curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD,
                           &filesize);
         if ((CURLE_OK == res) && (filesize>0)) {
-            std::cout<<"filesize "<<this->filename<<":"<<(long long)filesize<<" bytes"<<std::endl;
+            std::cout<<"filesize "<<this->filename<<":"<<(unsigned long long)filesize<<" bytes"<<std::endl;
             this->filesize = filesize;
         }
         curl_easy_cleanup(curl);
+    }
+    return true;
+}
+
+/**
+ * @brief Momi::local_check
+ * 如果目录不存在，则创建目录，并创建文件，如果文件不存在，则创建文件；
+ * 否则，上次下载未完成
+ */
+bool Momi::local_check()
+{
+    std::string path = this->output_path;
+    std::string filename = this->filename;
+
+    if (momi::is_dir_exist(path) == -1) {
+        //目录不存在，创建目录
+        #if _WIN32
+            _mkdir(path.c_str());
+        #else
+            mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+        #endif
+    }
+
+    this->filepath = path + filename;
+    this->tmpfilepath = this->filepath + std::string(".mtmp");
+
+    std::ifstream fin(this->tmpfilepath.c_str());
+    if (!fin) {
+        //文件不存在,创建临时文件
+        size_t fd = open(this->tmpfilepath.c_str(), O_CREAT|O_RDWR|O_TRUNC, 0666);
+        if(!fd){
+            momi::writelog("文件创建失败");
+            return false;
+        }
+        this->tmpfile_fd = fd;
+    } else { 
+        //上次下载未完成
+        this->d_type = DOWNLOAD_TYPE::RESUME_D;
+        momi::writelog("上次下载未完成");
     }
     return true;
 }
@@ -165,9 +153,44 @@ void Momi::generate_conns()
     }
 }
 
-void Momi::load_temp_info()
+bool Momi::generate_tempfile_info()
 {
+    u_int64_t tmpinfo_size = this->conn_num * 1024;
+    u_int64_t tmpfile_size = this->filesize + tmpinfo_size;
+    if (!ftruncate(this->tmpfile_fd, tmpfile_size)) {
+        return false;
+    }
+    return true;
+}
 
+bool Momi::load_tempfile_info()
+{
+    return true;
+}
+
+bool Momi::before_finish()
+{
+    std::string dstfile = this->filepath;
+    int counter = 1;
+    do {
+    #if _WIN32
+        struct _stat sb;
+        if (0 == stat(dstfile.c_str(), &sb)) {
+    #else
+        struct stat sb;
+        if (0 == stat(dstfile.c_str(), &sb)) {
+    #endif
+            dstfile = dstfile + std::string("(") + std::to_string(counter) + std::string(")");
+            counter++;
+            continue;
+        }
+        break;
+    } while(true);
+    
+    if (0 == rename(this->tmpfilepath.c_str(), dstfile.c_str())) {
+        return true; 
+    }
+    return false;
 }
 
 void * Momi::thread_func(void *args_ptr)

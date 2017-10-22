@@ -13,14 +13,14 @@
 
 namespace momi {
 
-enum PROTOCOLS { P_HTTP=1, P_HTTPS=2, FTP=3, BT=4 };
+enum PROTOCOLS { P_HTTP, P_HTTPS, FTP, FTPS, BT };
 
 enum DOWNLOAD_TYPE { NEW_D, RESUME_D };
 
 enum TRANSFER_TYPE { IS_MULTI, IS_SINGLE };
 
-static const int SKIP_PEER_VERIFICATION             =   1;
-static const int SKIP_HOSTNAME_VERIFICATION         =   1;
+static const int SKIP_SSL_VERIFY                    =   1;
+
 static const int MAX_THREAD_NUM                     =   64;
 
 }

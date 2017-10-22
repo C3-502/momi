@@ -3,6 +3,8 @@
 #include <string>
 #include <vector>
 #include <pthread.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 #include "define.h"
 #include "util.h"
@@ -14,6 +16,8 @@ class Momi
 {
 public:
     Momi(int conn_num, std::string output_path, std::string filename, std::string url, int protocol);
+
+    ~Momi();
 
     void init();
 
@@ -29,7 +33,12 @@ public:
 
     void generate_conns();
 
-    void load_temp_info();
+    bool generate_tempfile_info();
+
+    bool load_tempfile_info();
+   
+    //所有线程结束后，程序结束前的处理函数
+    bool before_finish();
 
     static void *thread_func(void *trans_p);
 
@@ -42,7 +51,7 @@ public:
     TRANSFER_TYPE t_type;
 
 private:
-    int conn_num;
+    int thread_num;
     std::string output_path;
     std::string filename;
     std::string url;
@@ -50,6 +59,8 @@ private:
     u_int64_t filesize;
     std::vector<Connection*> conns;
     std::string filepath;
+    std::string tmpfilepath;
+    int tmpfile_fd;
 };
 
 typedef struct {
