@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
         int conn_num_ = args::get(conn_num);
         std::string url_ = args::get(url);
         std::string output_path_ = args::get(output_path);
-        int protocol_ = Define::P_HTTP;
+        int protocol_ = momi::PROTOCOLS::P_HTTP;
 
         //从url中提取文件名
         int pos = url_.find_last_of("/");

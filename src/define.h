@@ -8,18 +8,21 @@
 #ifndef _DEFINE_H
 #define _DEFINE_H
 
+#define MIN(x,y) ((x)<(y)?(x):(y))
+#define MAX(x,y) ((x)>(y)?(x):(y))
+
+
 namespace momi {
-    enum PROTOCOLS { P_HTTP=1, P_HTTPS=2, FTP=3, BT=4 };
 
-    enum DOWNLOAD_TYPE { NEW_D, RESUME_D };
+enum PROTOCOLS { P_HTTP=1, P_HTTPS=2, FTP=3, BT=4 };
 
-    enum TRANSFER_TYPE { IS_MULTI, IS_SINGLE };
+enum DOWNLOAD_TYPE { NEW_D, RESUME_D };
 
-    static const int SKIP_PEER_VERIFICATION             =   1;
-    static const int SKIP_HOSTNAME_VERIFICATION         =   1;
-    static const int MAX_THREAD_NUM                     =   64;
+enum TRANSFER_TYPE { IS_MULTI, IS_SINGLE };
 
-#define min(x,y) (x<y) ? x : y
-#define max(x,y) (x>y) ? x : y
+static const int SKIP_PEER_VERIFICATION             =   1;
+static const int SKIP_HOSTNAME_VERIFICATION         =   1;
+static const int MAX_THREAD_NUM                     =   64;
+
 }
 #endif

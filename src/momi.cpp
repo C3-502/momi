@@ -25,7 +25,7 @@ void Momi::init()
 
     if ( DOWNLOAD_TYPE::NEW_D == this->d_type) {
         this->conn_num = (TRANSFER_TYPE::IS_MULTI == this->t_type) ? \
-                    min(this->conn_num, momi::MAX_THREAD_NUM) : 1;
+                    MIN(this->conn_num, momi::MAX_THREAD_NUM) : 1;
         generate_conns();
     } else {
         load_temp_info();
@@ -164,7 +164,7 @@ void Momi::generate_conns()
     }
 }
 
-void load_temp_info()
+void Momi::load_temp_info()
 {
 
 }
