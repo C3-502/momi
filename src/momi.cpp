@@ -23,7 +23,7 @@ Momi::~Momi()
 void Momi::init()
 {
     this->d_type = DOWNLOAD_TYPE::NEW_D;
-    this->t_type = TRANSFER_TYPE::IS_MULTI;
+    this->t_type = TRANSFER_TYPE::IS_SINGLE;
 
     if(remote_check()) {
         writelog("remote check success");
@@ -65,8 +65,10 @@ bool Momi::remote_check()
         }
 
         //HTTP(S)分块支持检测
-        if (PROTOCOLS::P_HTTP == this->protocol || PROTOCOLS::P_HTTPS == this->protocol) {
-            std::string header;
+        bool need_multi_check = (PROTOCOLS::P_HTTP == this->protocol || PROTOCOLS::P_HTTPS == this->protocol);
+        std::string header;
+
+        if (need_multi_check) {
             struct curl_slist *list = NULL;
             list = curl_slist_append(list, "range: bytes=0-");
             curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header);
@@ -82,10 +84,13 @@ bool Momi::remote_check()
             return false;
         }
 
+        if (need_multi_check && header.find("Content-Range: bytes") != std::string::npos) {
+            this->t_type = TRANSFER_TYPE::IS_MULTI;
+        }
+
         res = curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD,
                           &filesize);
         if (filesize>0) {
-            std::cout<<"filesize "<<this->filename<<":"<<(unsigned long long)filesize<<" bytes"<<std::endl;
             this->filesize = filesize;
         }
         curl_easy_cleanup(curl);
@@ -202,61 +207,6 @@ void * Momi::thread_func(void *args_ptr)
     Args_Struct *args_p = (Args_Struct *)args_ptr;
     Momi *momi = args_p->momi;
     Connection *conn = args_p->conn;
-
-    CURL *curl;
-    CURLcode res;
-    curl_global_init(CURL_GLOBAL_DEFAULT);
-
-    curl = curl_easy_init();
-    if (curl) {
-        curl_easy_setopt(curl, CURLOPT_URL, conn->get_url().c_str());
-
-        std::string range = "range: bytes=";
-        u_int64_t start_byte = conn->get_start_byte();
-        u_int64_t end_byte = conn->get_end_byte();
-        momi::str_append(range, start_byte);
-        momi::str_append(range, "-");
-        momi::str_append(range, end_byte);
-        //std::cout<<conn->get_conn_id()<<","<<range<<std::endl;
-
-        //设置HTTP头
-        struct curl_slist *list = NULL;
-        list = curl_slist_append(list, range.c_str());
-        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-        if (0 == (momi->protocol % 2)) {
-            if (SKIP_SSL_VERIFY) {
-                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
-                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-            } else{
-                //todo
-                //curl_easy_setopt(curl, CURLOPT_CAINFO, "");
-                //curl_easy_setopt(curl, CURLOPT_CAPATH, "");
-            }   
-        }
-
-        curl_easy_setopt(curl, CURLOPT_HEADER, 0L);
-        curl_easy_setopt(curl, CURLOPT_NOBODY, 1L);
-        curl_easy_setopt(curl, CURLOPT_FILETIME, 1L);
-        curl_easy_setopt(curl, CURLOPT_HEADER, 0L);
-
-        Trans_Struct trans;
-        trans.conn = conn;
-        std::ofstream out_fp = std::ofstream(conn->get_file_path());
-        trans.fp = (std::ofstream *)&out_fp;
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, &process_data);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&trans);
-
-        res = curl_easy_perform(curl);
-
-        if (res != CURLE_OK) {
-            std::cout<<"curl_easy_perform() failed: "<<curl_easy_strerror(res)<<std::endl;
-        }
-        std::cout<<"curl_easy_perform() ok"<<std::endl;
-        out_fp.close();
-        curl_easy_cleanup(curl);
-    }
-    return NULL;
 }
 
 size_t Momi::process_data(void * buffer, size_t size, size_t nmemb, void *user_p) {
