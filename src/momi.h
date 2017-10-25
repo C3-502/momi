@@ -69,6 +69,7 @@ typedef struct {
 } Trans_Struct;
 
 typedef struct {
+    Momi* momi;
     Connection* conn;
     int index;
 } Args_Struct;

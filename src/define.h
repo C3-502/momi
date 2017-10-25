@@ -13,7 +13,7 @@
 
 namespace momi {
 
-enum PROTOCOLS { P_HTTP, P_HTTPS, FTP, FTPS, BT };
+enum PROTOCOLS { P_HTTP, P_HTTPS, P_FTP, P_FTPS, P_BT };
 
 enum DOWNLOAD_TYPE { NEW_D, RESUME_D };
 

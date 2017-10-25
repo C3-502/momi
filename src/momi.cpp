@@ -7,7 +7,7 @@
 namespace momi
 {
 
-Momi::Momi(int conn_num, std::string output_path, std::string filename, std::string url, int protocol)
+Momi::Momi(int thread_num, std::string output_path, std::string filename, std::string url, int protocol)
     :thread_num(thread_num), output_path(output_path), filename(filename), url(url), protocol(protocol)
 {
 }
@@ -26,11 +26,11 @@ void Momi::init()
     this->t_type = TRANSFER_TYPE::IS_MULTI;
 
     if(remote_check()) {
-        momi::writelog("remote check success");
+        writelog("remote check success");
     }
 
     if(local_check()) {
-        momi::writelog("local check success");
+        writelog("local check success");
     }
     
     if ( DOWNLOAD_TYPE::NEW_D == this->d_type) {
@@ -64,23 +64,27 @@ bool Momi::remote_check()
             }   
         }
 
-//分块支持检测
-//        struct curl_slist *list = NULL;
-//        list = curl_slist_append(list, "");
-//        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+        //HTTP(S)分块支持检测
+        if (PROTOCOLS::P_HTTP == this->protocol || PROTOCOLS::P_HTTPS == this->protocol) {
+            std::string header;
+            struct curl_slist *list = NULL;
+            list = curl_slist_append(list, "range: bytes=0-");
+            curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header);
+            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+        } 
 
         curl_easy_setopt(curl, CURLOPT_HEADER, 0);
         curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
         res = curl_easy_perform(curl);
 
         if (res != CURLE_OK) {
-            std::cout<<"curl_easy_perform() failed: "<<curl_easy_strerror(res);
+            std::cout<<"remote_check failed: "<<curl_easy_strerror(res);
             return false;
         }
 
         res = curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD,
                           &filesize);
-        if ((CURLE_OK == res) && (filesize>0)) {
+        if (filesize>0) {
             std::cout<<"filesize "<<this->filename<<":"<<(unsigned long long)filesize<<" bytes"<<std::endl;
             this->filesize = filesize;
         }
@@ -116,14 +120,14 @@ bool Momi::local_check()
         //文件不存在,创建临时文件
         size_t fd = open(this->tmpfilepath.c_str(), O_CREAT|O_RDWR|O_TRUNC, 0666);
         if(!fd){
-            momi::writelog("文件创建失败");
+            writelog("文件创建失败");
             return false;
         }
         this->tmpfile_fd = fd;
     } else { 
         //上次下载未完成
         this->d_type = DOWNLOAD_TYPE::RESUME_D;
-        momi::writelog("上次下载未完成");
+        writelog("上次下载未完成");
     }
     return true;
 }
@@ -131,22 +135,22 @@ bool Momi::local_check()
 void Momi::generate_conns()
 {
     //划分每个连接处理的文件段
-    int size = this->filesize/(this->conn_num-1);
+    int size = this->filesize/(this->thread_num-1);
     int last_size = 0;
 
-    int mod = this->filesize%this->conn_num;
+    int mod = this->filesize%this->thread_num;
     if (mod == 0) {
-        size = this->filesize/this->conn_num;
+        size = this->filesize/this->thread_num;
     } else {
-        last_size = this->filesize - ((this->conn_num-1)*size);
+        last_size = this->filesize - ((this->thread_num-1)*size);
     }
 
-    for (int i=1; i<=this->conn_num; i++) {
+    for (int i=1; i<=this->thread_num; i++) {
         Connection *conn = new Connection(this->url, this->filepath);
         conn->set_conn_id(i);
         conn->set_start_byte(size*(i-1)+1);
         conn->set_conn_size(size);
-        if (i==this->conn_num) {
+        if (i==this->thread_num) {
             conn->set_conn_size(last_size);
         }
         this->conns.push_back(conn);
@@ -155,7 +159,7 @@ void Momi::generate_conns()
 
 bool Momi::generate_tempfile_info()
 {
-    u_int64_t tmpinfo_size = this->conn_num * 1024;
+    u_int64_t tmpinfo_size = 0;
     u_int64_t tmpfile_size = this->filesize + tmpinfo_size;
     if (!ftruncate(this->tmpfile_fd, tmpfile_size)) {
         return false;
@@ -196,6 +200,7 @@ bool Momi::before_finish()
 void * Momi::thread_func(void *args_ptr)
 {
     Args_Struct *args_p = (Args_Struct *)args_ptr;
+    Momi *momi = args_p->momi;
     Connection *conn = args_p->conn;
 
     CURL *curl;
@@ -218,13 +223,15 @@ void * Momi::thread_func(void *args_ptr)
         struct curl_slist *list = NULL;
         list = curl_slist_append(list, range.c_str());
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-
-        if (momi::SKIP_PEER_VERIFICATION) {
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);
-        }
-
-        if (momi::SKIP_HOSTNAME_VERIFICATION) {
-            curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
+        if (0 == (momi->protocol % 2)) {
+            if (SKIP_SSL_VERIFY) {
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
+                curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
+            } else{
+                //todo
+                //curl_easy_setopt(curl, CURLOPT_CAINFO, "");
+                //curl_easy_setopt(curl, CURLOPT_CAPATH, "");
+            }   
         }
 
         curl_easy_setopt(curl, CURLOPT_HEADER, 0L);
@@ -269,10 +276,11 @@ void Momi::run()
 {
     curl_global_init(CURL_GLOBAL_ALL);
     
-    pthread_t tid[this->conn_num];
+    pthread_t tid[this->thread_num];
     int error;
-    for(int i=0; i<this->conn_num; i++){
+    for(int i=0; i<this->thread_num; i++){
         Args_Struct *args_ptr = (Args_Struct *)malloc(sizeof(Args_Struct));
+        args_ptr->momi = this;
         args_ptr->conn = this->conns[i];
         args_ptr->index = i;
 
@@ -284,7 +292,7 @@ void Momi::run()
         }
     }
 
-    for(int i=1; i<=this->conn_num; i++){
+    for(int i=1; i<=this->thread_num; i++){
         error = pthread_join(tid[i], NULL);
         std::cout<<"连接"<<i<<"结束"<<std::endl;
     }
