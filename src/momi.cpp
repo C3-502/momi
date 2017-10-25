@@ -268,29 +268,9 @@ size_t Momi::process_data(void * buffer, size_t size, size_t nmemb, void *user_p
 void Momi::run()
 {
     curl_global_init(CURL_GLOBAL_ALL);
-    
-    pthread_t tid[this->conn_num];
-    int error;
-    for(int i=0; i<this->conn_num; i++){
-        Args_Struct *args_ptr = (Args_Struct *)malloc(sizeof(Args_Struct));
-        args_ptr->conn = this->conns[i];
-        args_ptr->index = i;
-
-        error = pthread_create(&tid[i], NULL, thread_func, args_ptr);
-        if(0 != error){
-            std::cout<<"线程"<<i+1<<"创建错误"<<std::endl;
-        }else{
-            std::cout<<"连接"<<i+1<<"开始下载"<<std::endl;
-        }
-    }
-
-    for(int i=1; i<=this->conn_num; i++){
-        error = pthread_join(tid[i], NULL);
-        std::cout<<"连接"<<i<<"结束"<<std::endl;
-    }
-    curl_global_cleanup();
     momi::Loader *loader = new HttpLoader(0, 32);
     loader->run();
+    curl_global_cleanup();
 }
 
 }
