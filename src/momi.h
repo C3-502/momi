@@ -15,6 +15,7 @@ namespace momi {
 class Momi
 {
 public:
+    Momi() {}
     Momi(int conn_num, std::string output_path, std::string filename, std::string url, int protocol);
 
     ~Momi();

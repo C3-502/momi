@@ -275,7 +275,7 @@ size_t Momi::process_data(void * buffer, size_t size, size_t nmemb, void *user_p
 void Momi::run()
 {
     curl_global_init(CURL_GLOBAL_ALL);
-    
+    /* 
     pthread_t tid[this->thread_num];
     int error;
     for(int i=0; i<this->thread_num; i++){
@@ -297,8 +297,10 @@ void Momi::run()
         std::cout<<"连接"<<i<<"结束"<<std::endl;
     }
     curl_global_cleanup();
+    */
     momi::Loader *loader = new HttpLoader(0, 32);
     loader->run();
+    curl_global_cleanup();
 }
 
 }
