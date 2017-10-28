@@ -76,5 +76,14 @@ static void str_append(std::string &str, const char* chs) {
     str.append(ss.str());
 }
 
+static bool file_exist(const std::string& file_path)
+{
+    if (file_path.empty())
+        return false;
+    if (access(file_path.c_str(), F_OK) < 0)
+        return false;
+    return true;
+}
+
 }
 #endif // UTIL_H

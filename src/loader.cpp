@@ -1,4 +1,5 @@
 #include "loader.h"
+#include "momi.h"
 
 #include <sys/epoll.h>
 #include <stdio.h>
@@ -13,55 +14,56 @@ namespace detail {
 static int sock_cb(CURL *e, curl_socket_t s, int what, void *cbp, void *sockp);
 static int timer_cb(CURLM* multi, long timeout, void* u);
 
-class CurlTask
+class CurlManager;
+class CurlWorker
 {
 public:
-    CurlTask(uint32_t size, const std::string& url)
-        : easy_arr_(size), url_(url)
+    CurlWorker(MomiTask* task, uint64_t start, uint64_t end)
+        : curl_(curl_easy_init()), start_(start), end_(end), current_pos_(start_), task_(task)
     {
-        for (uint i = 0; i < size; ++i)
-        {
-            CURL* easy = curl_easy_init();
-            set_easy_curl_opt(easy);
-            easy_arr_[i] = easy;
-        }
+        set_easy_curl_opt(curl_);
     }
 
-    ~CurlTask()
+    ~CurlWorker()
     {
-        for (CURL* easy : easy_arr_)
-        {
-            curl_easy_cleanup(easy);
-        }
+        curl_easy_cleanup(curl_);
     }
 
-    int size()
-    {
-        return easy_arr_.size();
-    }
+    CURL* curl_worker_handle() { return curl_; }
+    uint64_t current_pos() { return current_pos_; }
+    void add_current_pos(uint64_t count) { current_pos_ += count; }
+    bool work_done() { return current_pos_ == end_; }
 
-    const std::vector<CURL*>& easy_arr()
-    {
-        return easy_arr_;
-    }
+    MomiTask* task() { return task_; }
 
 private:
     void set_easy_curl_opt(CURL* curl)
     {
-        curl_easy_setopt(curl, CURLOPT_URL, url_.c_str());
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlTask::write_cb);
+        const std::string& url = task_->url();
+        curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWorker::write_cb);
+        curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
     }
 
     static size_t write_cb(void* ptr, size_t size, size_t count, void* data)
     {
+        CurlWorker* worker = (CurlWorker*) data;
+        uint64_t pos = worker->current_pos();
+        worker->add_current_pos(count);
+        MomiTask* task = worker->task();
         char* str = (char* ) ptr;
+        task->save(str, pos, count);
         std::cout << str << std::endl;
         return size * count;
     }
 
 private:
-    std::string url_;
-    std::vector<CURL*> easy_arr_;
+    CURL* curl_;
+    CurlManager* mgr_;
+    MomiTask* task_;
+    uint64_t start_;
+    uint64_t end_;
+    uint64_t current_pos_;
 };
 
 class CurlManager
@@ -76,15 +78,12 @@ public:
         set_multi_curl_opt();
     }
 
-    void add_task(CurlTask* task)
+    void add_worker(CurlWorker* worker)
     {
-        tasks_.push_back(task);
-        connections_ += tasks_.size();
-        auto easy_arr = task->easy_arr();
-        for (CURL* easy : easy_arr)
-        {
-            curl_multi_add_handle(multi_, easy);
-        }
+        workers_.push_back(worker);
+        connections_ += 1;
+        CURL* curl = worker->curl_worker_handle();
+        curl_multi_add_handle(multi_, curl);
     }
 
     void start()
@@ -155,7 +154,7 @@ private:
 
 private:
     CURLM *multi_;
-    std::vector<CurlTask*> tasks_;
+    std::vector<CurlWorker*> workers_;
     int epfd_;
     int connections_;
     int active_connections_;
@@ -210,6 +209,12 @@ static int timer_cb(CURLM* multi, long timeout, void* u)
 
 }
 
+Loader::Loader(MomiTask *task)
+    : task_(task)
+{
+
+}
+
 void Loader::run()
 {
     loader_work_func();
@@ -219,8 +224,8 @@ void HttpLoader::loader_work_func()
 {
     detail::CurlManager *curl_mgr = new detail::CurlManager;
     curl_mgr->init();
-    detail::CurlTask* task = new detail::CurlTask(4, "www.baidu.com");
-    curl_mgr->add_task(task);
+    detail::CurlWorker* worker = new detail::CurlWorker(task_, start_, end_);
+    curl_mgr->add_worker(worker);
     curl_mgr->start();
 }
 

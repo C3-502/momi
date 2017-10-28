@@ -12,6 +12,7 @@
 
 namespace momi {
 
+class MomiTask;
 class Momi
 {
 public:
@@ -24,27 +25,6 @@ public:
 
     void run();
 
-    void pause();
-
-    void resume();
-
-    bool local_check();
-
-    bool remote_check();
-
-    void generate_conns();
-
-    bool generate_tempfile_info();
-
-    bool load_tempfile_info();
-   
-    //所有线程结束后，程序结束前的处理函数
-    bool before_finish();
-
-    static void *thread_func(void *trans_p);
-
-    static size_t process_data(void * buffer, size_t size, size_t nmemb, void *user_p);
-
     //下载类型，新下载or恢复下载
     DOWNLOAD_TYPE d_type;
 
@@ -53,15 +33,50 @@ public:
 
 private:
     int thread_num;
-    std::string output_path;
-    std::string filename;
-    std::string url;
-    int protocol;
-    u_int64_t filesize;
-    std::vector<Connection*> conns;
-    std::string filepath;
-    std::string tmpfilepath;
-    int tmpfile_fd;
+    std::vector<MomiTask*> tasks_;
+};
+
+class MomiTask
+{
+public:
+    enum MomiTaskStatus
+    {
+        New, Download, Stop, Complete
+    };
+
+public:
+    MomiTask(const std::string& url, const std::string& output_path,
+             const std::string& filename, int protocol)
+        : url_(url), output_path_(output_path), filename_(filename),
+          protocol_(protocol), filepath_(output_path + filename), filesize_(0),
+          fd_(-1), status_(New)
+    {
+
+    }
+
+    void init();
+    bool local_check();
+    bool remote_check();
+
+    const std::string& url() { return url_; }
+    uint64_t file_size() { return filesize_; }
+    const std::string& tmp_file_path() { return tmpfilepath_; }
+    const std::string& file_path() { return filepath_; }
+
+    MomiTaskStatus status() { return status_; }
+    void set_status(MomiTaskStatus status) { status_ = status; }
+    void save(char *buf, uint64_t start, uint64_t count);
+    void rename();
+private:
+    std::string output_path_;
+    std::string filename_;
+    std::string url_;
+    int protocol_;
+    std::string filepath_;
+    std::string tmpfilepath_;
+    uint64_t filesize_;
+    int fd_;
+    MomiTaskStatus status_;
 };
 
 typedef struct {
