@@ -16,7 +16,7 @@ void SaveQueue::push(SaveNode* node)
     if (empty()) {
         tail_ = head_ = node;
     } else {
-        tail_->next_ = node;
+        tail_->set_next(node);
     }
 }
 
@@ -24,7 +24,7 @@ void SaveQueue::unshift()
 {
     if (!empty()) {
         SaveNode* del_ = head_;
-        head_=head_->next_;
+        head_=head_->next();
         if (NULL==head_) {
             tail_=head_;
         }
@@ -43,16 +43,20 @@ bool SaveQueue::empty()
 void Saver::run()
 {
     while (true) {
-        SaveNode* node = queue.head();
+        SaveNode* node = queue_->head();
         MomiTask* task = node->task();
         task->save(node->str(), node->pos(), node->count());
+        if ((MomiTask::MomiTaskStatus::Complete == task->status())
+            && queue_->empty()){
+           break; 
+        }
     }
 }
 
-void Saver::save(char *str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task)
+void Saver::save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task)
 {
     SaveNode* node = new SaveNode(str, pos, count, timestamp, task);
-    queue.push(node);
+    queue_->push(node);
 }
 
 }

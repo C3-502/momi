@@ -138,8 +138,8 @@ bool MomiTask::remote_check()
 
 void MomiTask::async_save(const std::string &buf, uint64_t start, uint64_t count)
 {
-    time_t ts = time(NUL);
-    momi_->save(str, start, count, ts, this);
+    time_t ts = time(NULL);
+    momi_->save(buf, start, count, ts, this);
 }
 
 void MomiTask::rename()

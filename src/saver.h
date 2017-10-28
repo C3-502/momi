@@ -12,24 +12,25 @@
 
 namespace momi
 {
-
+class MomiTask;
 class SaveNode
 {
 public:
-    SaveNode(char *str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task) 
-        : str_(str), pos_(pos), count_(count), timestamp_(timestamp), task_(task), next_(NULL){};
+    SaveNode(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task) 
+        : str_(str), pos_(pos), count_(count), timestamp_(timestamp), task_(task), next_(NULL){}
 
     ~SaveNode(){}
 
-    char * str() { return str_; }
+    std::string str() { return str_; }
     uint64_t pos() { return pos_; }
     size_t count() { return count_; }
     uint32_t timestamp() { return timestamp_; }
     MomiTask* task() { return task_; }
     SaveNode* next() { return next_; }
+    void set_next(SaveNode* node) { next_ = node; }
 
 private:
-    char *str_;
+    std::string str_;
     uint64_t pos_;
     size_t count_;
     uint32_t timestamp_;
@@ -60,9 +61,9 @@ public:
     Saver() {}
     ~Saver() {}
     void run();
-    void save(char *str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task);
+    void save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task);
 private:
-    SaveQueue queue;
+    SaveQueue* queue_;
 };
 
 }
