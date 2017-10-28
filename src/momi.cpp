@@ -11,7 +11,7 @@ namespace momi
 Momi::Momi(int thread_num, std::string output_path, std::string filename, std::string url, int protocol)
     :thread_num(thread_num), tasks_(0)
 {
-    MomiTask* task = new MomiTask(url, output_path, filename, protocol);
+    MomiTask* task = new MomiTask(url, output_path, filename, protocol, this);
     task->init();
     tasks_.push_back(task);
 }
@@ -31,6 +31,11 @@ void Momi::run()
     curl_global_init(CURL_GLOBAL_ALL);
     // how to start loader?
     curl_global_cleanup();
+}
+
+void Momi::save(const std::string &str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask *task)
+{
+    saver_->save(str, pos, count, timestamp, task);
 }
 
 void Momi::start_loader(MomiTask *task, uint64_t start, uint64_t end)
@@ -131,6 +136,12 @@ bool MomiTask::remote_check()
     return true;
 }
 
+void MomiTask::async_save(const std::string &buf, uint64_t start, uint64_t count)
+{
+    time_t ts = time(NUL);
+    momi_->save(str, start, count, ts, this);
+}
+
 void MomiTask::rename()
 {
 
@@ -152,6 +163,16 @@ void MomiTask::save_meta_info()
         Loader* loader = loaders_[i];
         loader->save_meta_info(buf);
     }
+}
+
+void MomiTask::update_status()
+{
+    for (Loader* loader : loaders_)
+    {
+        if (loader->status() != Loader::Complete)
+            return;
+    }
+    status_ = Complete;
 }
 
 }

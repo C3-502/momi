@@ -27,7 +27,7 @@ public:
 
     void run();
 
-    void start_loader(MomiTask* task, uint64_t start, uint64_t end);
+    void save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task);
 
     //下载类型，新下载or恢复下载
     DOWNLOAD_TYPE d_type;
@@ -36,9 +36,12 @@ public:
     TRANSFER_TYPE t_type;
 
 private:
+    void start_loader(MomiTask* task, uint64_t start, uint64_t end);
+
+private:
     int thread_num;
     std::vector<MomiTask*> tasks_;
-    Saver saver;
+    Saver* saver_;
 };
 
 class MomiTask
@@ -46,15 +49,15 @@ class MomiTask
 public:
     enum MomiTaskStatus
     {
-        New, Download, Stop, Complete
+        New, Downloading, Complete, Stop
     };
 
 public:
     MomiTask(const std::string& url, const std::string& output_path,
-             const std::string& filename, int protocol)
+             const std::string& filename, int protocol, Momi* momi)
         : url_(url), output_path_(output_path), filename_(filename),
           protocol_(protocol), filepath_(output_path + filename), filesize_(0),
-          fd_(-1), status_(New)
+          fd_(-1), status_(New), momi_(momi)
     {
 
     }
@@ -70,6 +73,7 @@ public:
 
     MomiTaskStatus status() { return status_; }
     void set_status(MomiTaskStatus status) { status_ = status; }
+    void async_save(const std::string& buf, uint64_t start, uint64_t count);
     void save(char *buf, uint64_t start, uint64_t count);
     void save_meta_info();
 
@@ -86,6 +90,7 @@ private:
     int fd_;
     MomiTaskStatus status_;
     std::vector<Loader*> loaders_;
+    Momi* momi_;
 };
 
 typedef struct {

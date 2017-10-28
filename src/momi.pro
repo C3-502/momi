@@ -15,12 +15,14 @@ HEADERS = \
    exception.h \
    loader.h \
    momi.h \
-   util.h
+   util.h \
+   saver.h
 
 SOURCES = \
    loader.cpp \
    main.cpp \
-   momi.cpp
+   momi.cpp \
+   saver.cpp
 
 INCLUDEPATH = \
     $$PWD/.

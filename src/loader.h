@@ -13,6 +13,12 @@ class MomiTask;
 class Loader
 {
 public:
+    enum LoaderStatus
+    {
+        New, Downloading, Complete, Stop
+    };
+
+public:
     explicit Loader(MomiTask* task, uint64_t start, uint64_t end);
 	virtual ~Loader() {}
 
@@ -23,6 +29,9 @@ public:
 	void pause() {}
 	void resume() {}
 	void run();
+
+    void set_status(LoaderStatus status) { status_ = status; }
+    LoaderStatus status() { return status_; }
 
     MomiTask* task() { return task_; }
     void save_meta_info(const std::string& buf);
@@ -36,6 +45,7 @@ protected:
     MomiTask* task_;
     std::vector<void*> workers_;
     std::thread thread_;
+    LoaderStatus status_;
 };
 
 

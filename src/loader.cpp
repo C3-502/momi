@@ -55,11 +55,10 @@ private:
     {
         CurlWorker* worker = (CurlWorker*) data;
         uint64_t pos = worker->current_pos();
-        worker->add_current_pos(count);
         MomiTask* task = worker->task();
         char* str = (char* ) ptr;
-        task->save(str, pos, count);
-        std::cout << str << std::endl;
+        task->async_save(str, pos, count);
+        worker->add_current_pos(count);
         return size * count;
     }
 
@@ -245,6 +244,8 @@ void HttpLoader::loader_work_func()
     workers_.push_back(worker);
     curl_mgr->add_worker(worker);
     curl_mgr->start();
+    status_ = Complete;
+    task_->update_status();
 }
 
 }
