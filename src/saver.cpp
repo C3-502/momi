@@ -40,4 +40,19 @@ bool SaveQueue::empty()
     return false;
 }
 
+void Saver::run()
+{
+    while (true) {
+        SaveNode* node = queue.head();
+        MomiTask* task = node->task();
+        task->save(node->str(), node->pos(), node->count());
+    }
+}
+
+void Saver::save(char *str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task)
+{
+    SaveNode* node = new SaveNode(str, pos, count, timestamp, task);
+    queue.push(node);
+}
+
 }

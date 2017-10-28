@@ -9,6 +9,7 @@
 #include "define.h"
 #include "util.h"
 #include "connection.h"
+#include "saver.h"
 
 namespace momi {
 
@@ -37,6 +38,7 @@ public:
 private:
     int thread_num;
     std::vector<MomiTask*> tasks_;
+    Saver saver;
 };
 
 class MomiTask

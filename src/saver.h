@@ -6,6 +6,7 @@
  ************************************************************************/
 #include<iostream>
 #include<mutex>
+#include "momi.h"
 #ifndef _SAVER_H
 #define _SAVER_H
 
@@ -15,8 +16,8 @@ namespace momi
 class SaveNode
 {
 public:
-    SaveNode(char *str, uint64_t pos, size_t count, uint32_t timestamp) 
-        : str_(str), pos_(pos), count_(count), timestamp_(timestamp), next_(NULL){};
+    SaveNode(char *str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task) 
+        : str_(str), pos_(pos), count_(count), timestamp_(timestamp), task_(task), next_(NULL){};
 
     ~SaveNode(){}
 
@@ -24,13 +25,15 @@ public:
     uint64_t pos() { return pos_; }
     size_t count() { return count_; }
     uint32_t timestamp() { return timestamp_; }
+    MomiTask* task() { return task_; }
+    SaveNode* next() { return next_; }
 
 private:
     char *str_;
     uint64_t pos_;
     size_t count_;
     uint32_t timestamp_;
-public:
+    MomiTask *task_;
     SaveNode *next_;
 };
 
@@ -48,10 +51,19 @@ public:
 private:
     SaveNode* head_=NULL;
     SaveNode* tail_=NULL;
-public:
     std::mutex push_mutex;
 };
 
+class Saver
+{
+public:
+    Saver() {}
+    ~Saver() {}
+    void run();
+    void save(char *str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task);
+private:
+    SaveQueue queue;
+};
 
 }
 #endif
