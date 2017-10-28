@@ -12,6 +12,7 @@ namespace momi
 
 void SaveQueue::push(SaveNode* node)
 {
+    std::lock_guard<std::mutex> guard(push_mutex);
     if (empty()) {
         tail_ = head_ = node;
     } else {

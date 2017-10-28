@@ -5,6 +5,7 @@
 	> Created Time: 2017年10月28日 星期六 15时48分01秒
  ************************************************************************/
 #include<iostream>
+#include<mutex>
 #ifndef _SAVER_H
 #define _SAVER_H
 
@@ -47,6 +48,8 @@ public:
 private:
     SaveNode* head_=NULL;
     SaveNode* tail_=NULL;
+public:
+    std::mutex push_mutex;
 };
 
 
