@@ -1,5 +1,6 @@
 #include<iostream>
 #include <curl/curl.h>
+#include <thread>
 
 #include "momi.h"
 #include "loader.h"
@@ -28,9 +29,14 @@ void Momi::init()
 void Momi::run()
 {
     curl_global_init(CURL_GLOBAL_ALL);
-    momi::Loader *loader = new HttpLoader(tasks_[0]);
-    loader->run();
+    // how to start loader?
     curl_global_cleanup();
+}
+
+void Momi::start_loader(MomiTask *task, uint64_t start, uint64_t end)
+{
+    momi::Loader *loader = new HttpLoader(task, start, end);
+    loader->run();
 }
 
 void MomiTask::init()
@@ -134,6 +140,18 @@ void MomiTask::save(char *buf, uint64_t start, uint64_t count)
 {
     ::lseek(fd_, start, SEEK_SET);
     ::write(fd_, buf, count);
+}
+
+void MomiTask::save_meta_info()
+{
+    std::string buf;
+    uint32_t len = loaders_.size();
+    buf += pack<uint32_t>(len);
+    for (uint32_t i = 0; i < len; ++i)
+    {
+        Loader* loader = loaders_[i];
+        loader->save_meta_info(buf);
+    }
 }
 
 }

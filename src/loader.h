@@ -1,9 +1,9 @@
 #ifndef __LOADER_H__
 #define __LOADER_H__
 
-// #include <thread>
-
+#include <thread>
 #include <string>
+#include <vector>
 #include <curl/curl.h>
 
 namespace momi {
@@ -13,7 +13,7 @@ class MomiTask;
 class Loader
 {
 public:
-    explicit Loader(MomiTask* task);
+    explicit Loader(MomiTask* task, uint64_t start, uint64_t end);
 	virtual ~Loader() {}
 
 	uint32_t start() const { return start_; }
@@ -25,6 +25,7 @@ public:
 	void run();
 
     MomiTask* task() { return task_; }
+    void save_meta_info(const std::string& buf);
 protected:
 	virtual void loader_work_func() {}
 
@@ -33,14 +34,16 @@ protected:
     uint64_t start_;
     uint64_t end_;
     MomiTask* task_;
+    std::vector<void*> workers_;
+    std::thread thread_;
 };
 
 
 class HttpLoader: public Loader
 {
 public:
-    HttpLoader(MomiTask* task)
-        : Loader(task)
+    HttpLoader(MomiTask* task, uint64_t start, uint64_t end)
+        : Loader(task, start, end)
     {}
 	virtual ~HttpLoader() {}
 

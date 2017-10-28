@@ -36,3 +36,4 @@ test/bin/*
 /build/*
 /.idea/*
 /cmake-build-debug/
+/momi-Debug/

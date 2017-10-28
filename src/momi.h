@@ -12,6 +12,7 @@
 
 namespace momi {
 
+class Loader;
 class MomiTask;
 class Momi
 {
@@ -24,6 +25,8 @@ public:
     void init();
 
     void run();
+
+    void start_loader(MomiTask* task, uint64_t start, uint64_t end);
 
     //下载类型，新下载or恢复下载
     DOWNLOAD_TYPE d_type;
@@ -66,7 +69,10 @@ public:
     MomiTaskStatus status() { return status_; }
     void set_status(MomiTaskStatus status) { status_ = status; }
     void save(char *buf, uint64_t start, uint64_t count);
+    void save_meta_info();
+
     void rename();
+
 private:
     std::string output_path_;
     std::string filename_;
@@ -77,6 +83,7 @@ private:
     uint64_t filesize_;
     int fd_;
     MomiTaskStatus status_;
+    std::vector<Loader*> loaders_;
 };
 
 typedef struct {

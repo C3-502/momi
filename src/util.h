@@ -1,6 +1,7 @@
 #ifndef UTIL_H
 #define UTIL_H
 
+#include <string.h>
 #include <iostream>
 #include <unistd.h>
 #include <sys/sysinfo.h>
@@ -84,6 +85,23 @@ static bool file_exist(const std::string& file_path)
         return false;
     return true;
 }
+
+template <typename NumberType>
+std::string pack(NumberType val)
+{
+    char* ptr = (char*)(&val);
+    return std::string(ptr, sizeof(val));
+}
+
+template <typename NumberType>
+NumberType unpack(const std::string& val)
+{
+    char* ptr = val.c_str();
+    NumberType num;
+    memcpy(&num, ptr, sizeof(NumberType));
+    return num;
+}
+
 
 }
 #endif // UTIL_H

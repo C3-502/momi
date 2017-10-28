@@ -1,6 +1,7 @@
 #include "loader.h"
 #include "momi.h"
 
+#include <thread>
 #include <sys/epoll.h>
 #include <stdio.h>
 #include <unistd.h>
@@ -33,7 +34,12 @@ public:
     uint64_t current_pos() { return current_pos_; }
     void add_current_pos(uint64_t count) { current_pos_ += count; }
     bool work_done() { return current_pos_ == end_; }
-
+    void save_meta_info(const std::string& buf)
+    {
+        buf += pack(start_);
+        buf += pack(end_);
+        buf += pack(current_pos_);
+    }
     MomiTask* task() { return task_; }
 
 private:
@@ -209,15 +215,26 @@ static int timer_cb(CURLM* multi, long timeout, void* u)
 
 }
 
-Loader::Loader(MomiTask *task)
-    : task_(task)
+Loader::Loader(MomiTask *task, uint64_t start, uint64_t end)
+    : task_(task), start_(start), end_(end)
 {
 
 }
 
 void Loader::run()
 {
-    loader_work_func();
+    thread_ = std::move(std::thread(loader_work_func, this));
+}
+
+void Loader::save_meta_info(const std::string &buf)
+{
+    uint32_t len = workers_.size();
+    buf += pack<uint32_t>(len);
+    for (uint32_t i = 0; i < len; ++i)
+    {
+        detail::CurlWorker* worker = (detail::CurlWorker*)(workers_[i]);
+        worker->save_meta_info(buf);
+    }
 }
 
 void HttpLoader::loader_work_func()
@@ -225,6 +242,7 @@ void HttpLoader::loader_work_func()
     detail::CurlManager *curl_mgr = new detail::CurlManager;
     curl_mgr->init();
     detail::CurlWorker* worker = new detail::CurlWorker(task_, start_, end_);
+    workers_.push_back(worker);
     curl_mgr->add_worker(worker);
     curl_mgr->start();
 }
