@@ -141,11 +141,11 @@ bool MomiTask::remote_check()
             return false;
         }
 
-        res = curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &filesize);
+        res = curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &filesize);
         if (filesize>0)
         {
-            std::cout << "filesize " << this->filename_ << ":"
-                      << (unsigned long long)filesize << " bytes" <<std::endl;
+            std::cout<<curl_version()<<std::endl;
+            std::cout << "filesize: " << filesize << " bytes" <<std::endl;
             this->filesize_ = filesize;
         }
         curl_easy_cleanup(curl);
