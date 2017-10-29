@@ -38,7 +38,12 @@ void Momi::run()
 
 void Momi::save(const std::string &str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask *task)
 {
-    saver_->save(str, pos, count, timestamp, task);
+    saver_->save(str, pos, count, timestamp, task, Saver::MsgType::Write);
+}
+
+void Momi::notify_finished(MomiTask *task, uint32_t timestamp)
+{
+    saver_->save("", 0, 0, timestamp, task, Saver::MsgType::Finish);
 }
 
 void Momi::start_loader(MomiTask *task, uint64_t start, uint64_t end)
@@ -152,6 +157,12 @@ void MomiTask::async_save(const std::string &buf, uint64_t start, uint64_t count
 {
     time_t ts = time(NULL);
     momi_->save(buf, start, count, ts, this);
+}
+
+void MomiTask::notify_finished()
+{
+    time_t ts = time(NULL);
+    momi_->notify_finished(this, ts);
 }
 
 void MomiTask::rename()

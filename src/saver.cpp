@@ -46,26 +46,32 @@ void Saver::run()
     {
         if (queue_.empty())
         {
-            std::cout << "empty" << std::endl;
-            if (MomiTask::Complete == task->status())
-            {
-                std::cout << "saver::run end" << std::endl;
-                task->rename();
-                break;
-            }
             continue;
         }
         SaveNode* node = queue_.front();
         queue_.pop_front();
         MomiTask* task = node->task();
-        task->save(node->str(), node->pos(), node->count());
-        std::cout << "saver::run, status: " << task->status() << std::endl;
+        if (node->msg_type() == SaveNode::Write)
+        {
+            task->save(node->str(), node->pos(), node->count());
+        }
+        else if (node->msg_type() == SaveNode::Finish)
+        {
+            task->rename();
+            break;
+        }
+        else
+        {
+            std::cerr << "error, invalid msg_type"<< std::endl;
+        }
+
     }
+    std::cout << "download finish" << std::endl;
 }
 
-void Saver::save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task)
+void Saver::save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task,  MsgType msg_type)
 {
-    SaveNode* node = new SaveNode(str, pos, count, timestamp, task);
+    SaveNode* node = new SaveNode(str, pos, count, timestamp, task, msg_type);
     queue_.push_back(node);
 }
 

@@ -243,6 +243,7 @@ void HttpLoader::loader_work_func()
     curl_mgr->start();
     status_ = Complete;
     task_->update_status();
+    task_->notify_finished();
 }
 
 }

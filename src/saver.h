@@ -18,8 +18,16 @@ class MomiTask;
 class SaveNode
 {
 public:
-    SaveNode(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task) 
-        : str_(str), pos_(pos), count_(count), timestamp_(timestamp), task_(task), next_(NULL){}
+    enum MsgType
+    {
+        Write,
+        Finish
+    };
+
+public:
+    SaveNode(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task, MsgType msg_type)
+        : str_(str), pos_(pos), count_(count), timestamp_(timestamp), task_(task), next_(NULL), msg_type_(msg_type)
+    {}
 
     ~SaveNode(){}
 
@@ -30,6 +38,7 @@ public:
     MomiTask* task() { return task_; }
     SaveNode* next() { return next_; }
     void set_next(SaveNode* node) { next_ = node; }
+    MsgType msg_type() { return msg_type_; }
 
 private:
     std::string str_;
@@ -38,6 +47,7 @@ private:
     uint32_t timestamp_;
     MomiTask *task_;
     SaveNode *next_;
+    MsgType msg_type_;
 };
 
 class SaveQueue
@@ -60,10 +70,12 @@ private:
 class Saver
 {
 public:
+    using MsgType = SaveNode::MsgType;
+public:
     Saver() {}
     ~Saver() {}
     void run();
-    void save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task);
+    void save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task, MsgType msg_type = MsgType::Write);
 private:
     std::list<SaveNode*> queue_;
 };
