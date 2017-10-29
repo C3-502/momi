@@ -96,7 +96,7 @@ std::string pack(NumberType val)
 template <typename NumberType>
 NumberType unpack(const std::string& val)
 {
-    char* ptr = val.c_str();
+    const char* ptr = val.c_str();
     NumberType num;
     memcpy(&num, ptr, sizeof(NumberType));
     return num;

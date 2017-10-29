@@ -34,11 +34,11 @@ public:
     uint64_t current_pos() { return current_pos_; }
     void add_current_pos(uint64_t count) { current_pos_ += count; }
     bool work_done() { return current_pos_ == end_; }
-    void save_meta_info(const std::string& buf)
+    void save_meta_info(std::string& buf)
     {
-        buf += pack(start_);
-        buf += pack(end_);
-        buf += pack(current_pos_);
+        buf += pack<uint64_t>(start_);
+        buf += pack<uint64_t>(end_);
+        buf += pack<uint64_t>(current_pos_);
     }
     MomiTask* task() { return task_; }
 
@@ -102,6 +102,7 @@ public:
         epoll_event events[32] = { 0 };
         while (true)
         {
+            printf("start epoll_wait, timeout: %d", this->timeout_);
             int nevents = epoll_wait(epfd_, events, 32, this->timeout_);
 
             if (nevents < 0)
@@ -121,18 +122,16 @@ public:
                     printf("events[%d].events=%d\n", i, events[i].events);
                     if (events[i].events & EPOLLIN)
                     {
-                        printf("1\n");
                         int ret = curl_multi_socket_action(multi_, events[i].data.fd, CURL_CSELECT_IN, &active_connections_);
                         printf("%d\n", ret);
                     }
                     else if (events[i].events & EPOLLOUT)
                     {
-                        printf("2\n");
                         curl_multi_socket_action(multi_, events[i].data.fd, CURL_CSELECT_OUT, &active_connections_);
                     }
                     else
                     {
-                        printf("3\n");
+
                     }
                 //	curl_multi_socket_action(multi, events[i].data.fd, 0, &running_events);
                 }
@@ -173,7 +172,6 @@ static int sock_cb(CURL *e, curl_socket_t s, int what, void *cbp, void *sockp)
 
     struct epoll_event ev = { 0 };
     ev.data.fd = s;
-    int epoll_op = EPOLL_CTL_MOD;
     if (what == CURL_POLL_REMOVE)
     {
         epoll_ctl(mgr->epfd(), EPOLL_CTL_DEL, s, &ev);
@@ -199,15 +197,14 @@ static int sock_cb(CURL *e, curl_socket_t s, int what, void *cbp, void *sockp)
         if (ret < 0)
             printf("epoll_ctl error\n");
     }
-    printf("epoll_ctl, op=%d, fd=%d, what=%d\n", epoll_op, s, what);
 
     return 0;
 }
 
-static int timer_cb(CURLM* multi, long timeout, void* u)
+static int timer_cb(CURLM* multi, long timeout, void* userp)
 {
     std::cout << "timeout: " << timeout << std::endl;
-    CurlManager* mgr = (CurlManager*) mgr;
+    CurlManager* mgr = (CurlManager*) userp;
     mgr->set_timeout(timeout);
     return 0;
 }
@@ -222,10 +219,10 @@ Loader::Loader(MomiTask *task, uint64_t start, uint64_t end)
 
 void Loader::run()
 {
-    thread_ = std::move(std::thread(loader_work_func, this));
+    thread_ = std::move(std::thread(&Loader::loader_work_func, this));
 }
 
-void Loader::save_meta_info(const std::string &buf)
+void Loader::save_meta_info(std::string &buf)
 {
     uint32_t len = workers_.size();
     buf += pack<uint32_t>(len);

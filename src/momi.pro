@@ -27,7 +27,7 @@ SOURCES = \
 INCLUDEPATH = \
     $$PWD/.
 
-LIBS += -L /usr/local/lib -lcurl
+LIBS += -L /usr/local/lib -lcurl -lpthread
 
 #DEFINES = 
 

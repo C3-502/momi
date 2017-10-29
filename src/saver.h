@@ -4,11 +4,13 @@
 	> Mail: kongxun.yb@gmail.com
 	> Created Time: 2017年10月28日 星期六 15时48分01秒
  ************************************************************************/
-#include<iostream>
-#include<mutex>
-#include "momi.h"
 #ifndef _SAVER_H
 #define _SAVER_H
+
+#include <iostream>
+#include <mutex>
+#include <list>
+#include "momi.h"
 
 namespace momi
 {
@@ -21,7 +23,7 @@ public:
 
     ~SaveNode(){}
 
-    std::string str() { return str_; }
+    const std::string& str() { return str_; }
     uint64_t pos() { return pos_; }
     size_t count() { return count_; }
     uint32_t timestamp() { return timestamp_; }
@@ -63,7 +65,7 @@ public:
     void run();
     void save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task);
 private:
-    SaveQueue* queue_;
+    std::list<SaveNode*> queue_;
 };
 
 }

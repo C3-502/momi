@@ -42,21 +42,31 @@ bool SaveQueue::empty()
 
 void Saver::run()
 {
-    while (true) {
-        SaveNode* node = queue_->head();
+    while (true)
+    {
+        if (queue_.empty())
+        {
+            std::cout << "empty" << std::endl;
+            if (MomiTask::Complete == task->status())
+            {
+                std::cout << "saver::run end" << std::endl;
+                task->rename();
+                break;
+            }
+            continue;
+        }
+        SaveNode* node = queue_.front();
+        queue_.pop_front();
         MomiTask* task = node->task();
         task->save(node->str(), node->pos(), node->count());
-        if ((MomiTask::MomiTaskStatus::Complete == task->status())
-            && queue_->empty()){
-           break; 
-        }
+        std::cout << "saver::run, status: " << task->status() << std::endl;
     }
 }
 
 void Saver::save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task)
 {
     SaveNode* node = new SaveNode(str, pos, count, timestamp, task);
-    queue_->push(node);
+    queue_.push_back(node);
 }
 
 }

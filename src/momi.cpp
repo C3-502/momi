@@ -1,16 +1,19 @@
-#include<iostream>
+#include <iostream>
+#include <stdio.h>
 #include <curl/curl.h>
 #include <thread>
 
 #include "momi.h"
 #include "loader.h"
+#include "saver.h"
 
 namespace momi
 {
 
 Momi::Momi(int thread_num, std::string output_path, std::string filename, std::string url, int protocol)
-    :thread_num(thread_num), tasks_(0)
+    :thread_num(thread_num), tasks_(0), saver_(new Saver)
 {
+    curl_global_init(CURL_GLOBAL_ALL);
     MomiTask* task = new MomiTask(url, output_path, filename, protocol, this);
     task->init();
     tasks_.push_back(task);
@@ -18,7 +21,7 @@ Momi::Momi(int thread_num, std::string output_path, std::string filename, std::s
 
 Momi::~Momi()
 {
-
+    curl_global_cleanup();
 }
 
 void Momi::init()
@@ -28,9 +31,9 @@ void Momi::init()
 
 void Momi::run()
 {
-    curl_global_init(CURL_GLOBAL_ALL);
-    // how to start loader?
-    curl_global_cleanup();
+    MomiTask* task = tasks_[0];
+    start_loader(task, 0, task->file_size());
+    saver_->run();
 }
 
 void Momi::save(const std::string &str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask *task)
@@ -55,7 +58,7 @@ bool MomiTask::local_check()
     std::string path = this->output_path_;
     std::string filename = this->filename_;
 
-    if (momi::is_dir_exist(path) == -1) {
+    if (!path.empty() && momi::is_dir_exist(path) == -1) {
         //目录不存在，创建目录
         #if _WIN32
             _mkdir(path.c_str());
@@ -90,17 +93,22 @@ bool MomiTask::remote_check()
 {
     CURL *curl;
     CURLcode res;
-    u_int64_t filesize = 0;
+    uint64_t filesize = 0;
 
     curl = curl_easy_init();
-    if (curl) {
+    if (curl)
+    {
         curl_easy_setopt(curl, CURLOPT_URL, this->url_.c_str());
         //SSL
-        if (0 == (this->protocol_ % 2)) {
-            if (SKIP_SSL_VERIFY) {
+        if (0 == (this->protocol_ % 2))
+        {
+            if (SKIP_SSL_VERIFY)
+            {
                 curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0);
                 curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0);
-            } else{
+            }
+            else
+            {
                 //todo
                 //curl_easy_setopt(curl, CURLOPT_CAINFO, "");
                 //curl_easy_setopt(curl, CURLOPT_CAPATH, "");
@@ -108,27 +116,31 @@ bool MomiTask::remote_check()
         }
 
         //HTTP(S)分块支持检测
-        if (PROTOCOLS::P_HTTP == this->protocol_ || PROTOCOLS::P_HTTPS == this->protocol_) {
-            std::string header;
-            struct curl_slist *list = NULL;
-            list = curl_slist_append(list, "range: bytes=0-");
-            curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header);
-            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
-        }
+//        if (PROTOCOLS::P_HTTP == this->protocol_ || PROTOCOLS::P_HTTPS == this->protocol_)
+//        {
+//            std::string header;
+//            struct curl_slist *list = NULL;
+//            list = curl_slist_append(list, "range: bytes=0-");
+//            curl_easy_setopt(curl, CURLOPT_HEADERDATA, &header);
+//            curl_easy_setopt(curl, CURLOPT_HTTPHEADER, list);
+//        }
 
         curl_easy_setopt(curl, CURLOPT_HEADER, 0);
         curl_easy_setopt(curl, CURLOPT_NOBODY, 1);
         res = curl_easy_perform(curl);
 
-        if (res != CURLE_OK) {
-            std::cout<<"remote_check failed: "<<curl_easy_strerror(res);
+        if (res != CURLE_OK)
+        {
+            std::string err_msg = std::string("remote_check failed: ") + curl_easy_strerror(res);
+            std::cout<< err_msg << std::endl;
             return false;
         }
 
-        res = curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD,
-                          &filesize);
-        if (filesize>0) {
-            std::cout<<"filesize "<<this->filename_<<":"<<(unsigned long long)filesize<<" bytes"<<std::endl;
+        res = curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD, &filesize);
+        if (filesize>0)
+        {
+            std::cout << "filesize " << this->filename_ << ":"
+                      << (unsigned long long)filesize << " bytes" <<std::endl;
             this->filesize_ = filesize;
         }
         curl_easy_cleanup(curl);
@@ -144,13 +156,13 @@ void MomiTask::async_save(const std::string &buf, uint64_t start, uint64_t count
 
 void MomiTask::rename()
 {
-
+    ::rename(tmpfilepath_.c_str(), filepath_.c_str());
 }
 
-void MomiTask::save(char *buf, uint64_t start, uint64_t count)
+void MomiTask::save(const std::string& str, uint64_t start, uint64_t count)
 {
     ::lseek(fd_, start, SEEK_SET);
-    ::write(fd_, buf, count);
+    ::write(fd_, str.c_str(), count);
 }
 
 void MomiTask::save_meta_info()

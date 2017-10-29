@@ -9,10 +9,10 @@
 #include "define.h"
 #include "util.h"
 #include "connection.h"
-#include "saver.h"
 
 namespace momi {
 
+class Saver;
 class Loader;
 class MomiTask;
 class Momi
@@ -74,9 +74,10 @@ public:
     MomiTaskStatus status() { return status_; }
     void set_status(MomiTaskStatus status) { status_ = status; }
     void async_save(const std::string& buf, uint64_t start, uint64_t count);
-    void save(char *buf, uint64_t start, uint64_t count);
+    void save(const std::string &buf, uint64_t start, uint64_t count);
     void save_meta_info();
 
+    void update_status();
     void rename();
 
 private:

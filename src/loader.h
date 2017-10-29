@@ -34,7 +34,7 @@ public:
     LoaderStatus status() { return status_; }
 
     MomiTask* task() { return task_; }
-    void save_meta_info(const std::string& buf);
+    void save_meta_info(std::__cxx11::string &buf);
 protected:
 	virtual void loader_work_func() {}
 
