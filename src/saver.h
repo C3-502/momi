@@ -9,6 +9,7 @@
 
 #include <iostream>
 #include <mutex>
+#include <condition_variable>
 #include <list>
 #include "momi.h"
 
@@ -50,23 +51,6 @@ private:
     MsgType msg_type_;
 };
 
-class SaveQueue
-{
-public:
-    SaveQueue(){}
-    ~SaveQueue(){}
-
-    void push(SaveNode* node);
-    void unshift();
-    bool empty();
-    SaveNode* head() { return head_; }
-
-private:
-    SaveNode* head_=NULL;
-    SaveNode* tail_=NULL;
-    std::mutex push_mutex;
-};
-
 class Saver
 {
 public:
@@ -78,6 +62,8 @@ public:
     void save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task, MsgType msg_type = MsgType::Write);
 private:
     std::list<SaveNode*> queue_;
+    std::mutex push_mutex_;
+    std::condition_variable push_cond_;
 };
 
 }

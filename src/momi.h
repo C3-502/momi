@@ -8,7 +8,6 @@
 
 #include "define.h"
 #include "util.h"
-#include "connection.h"
 
 namespace momi {
 
@@ -94,17 +93,6 @@ private:
     std::vector<Loader*> loaders_;
     Momi* momi_;
 };
-
-typedef struct {
-  Connection *conn;
-  std::ofstream *fp;
-} Trans_Struct;
-
-typedef struct {
-    Momi* momi;
-    Connection* conn;
-    int index;
-} Args_Struct;
 
 }
 
