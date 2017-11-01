@@ -26,8 +26,8 @@ public:
 
     void run();
 
-    void save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task);
-    void notify_finished(MomiTask* task, uint32_t timestamp);
+    void save(MomiTask* task, void *data, uint64_t start, uint64_t count);
+    void notify_finished(MomiTask* task);
     //下载类型，新下载or恢复下载
     DOWNLOAD_TYPE d_type;
 
@@ -72,9 +72,9 @@ public:
 
     MomiTaskStatus status() { return status_; }
     void set_status(MomiTaskStatus status) { status_ = status; }
-    void async_save(const std::string& buf, uint64_t start, uint64_t count);
+    void async_save(void *buf, uint64_t start, uint64_t count);
     void notify_finished();
-    void save(const std::string &buf, uint64_t start, uint64_t count);
+    void save(void *data, uint64_t start, uint64_t count);
     void save_meta_info();
 
     void update_status();

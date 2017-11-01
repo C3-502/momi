@@ -32,6 +32,7 @@ public:
 
     CURL* curl_worker_handle() { return curl_; }
     uint64_t current_pos() { return current_pos_; }
+    uint64_t end() { return end_; }
     void add_current_pos(uint64_t count) { current_pos_ += count; }
     bool work_done() { return current_pos_ == end_; }
     void save_meta_info(std::string& buf)
@@ -56,9 +57,12 @@ private:
         CurlWorker* worker = (CurlWorker*) data;
         uint64_t pos = worker->current_pos();
         MomiTask* task = worker->task();
-        char* str = (char* ) ptr;
-        task->async_save(str, pos, count);
+        char* buf = new char[count];
+        memcpy(buf, ptr, count);
+        task->async_save(buf, pos, count);
         worker->add_current_pos(count);
+        double process = double(worker->current_pos()) / double(worker->end());
+        printf("process: %.2f%%\n", 100 * process);
         return size * count;
     }
 
@@ -102,7 +106,7 @@ public:
         epoll_event events[32] = { 0 };
         while (true)
         {
-            printf("start epoll_wait, timeout: %d", this->timeout_);
+            printf("start epoll_wait, timeout: %d\n", this->timeout_);
             int nevents = epoll_wait(epfd_, events, 32, this->timeout_);
 
             if (nevents < 0)

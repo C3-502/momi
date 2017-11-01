@@ -10,7 +10,6 @@ CONFIG -= qt
 
 HEADERS = \
    include/args.hxx \
-   connection.h \
    define.h \
    exception.h \
    loader.h \

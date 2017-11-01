@@ -14,6 +14,7 @@ Momi::Momi(int thread_num, std::string output_path, std::string filename, std::s
     :thread_num(thread_num), tasks_(0), saver_(new Saver)
 {
     curl_global_init(CURL_GLOBAL_ALL);
+    std::cout << curl_version() << std::endl;
     MomiTask* task = new MomiTask(url, output_path, filename, protocol, this);
     task->init();
     tasks_.push_back(task);
@@ -32,18 +33,19 @@ void Momi::init()
 void Momi::run()
 {
     MomiTask* task = tasks_[0];
+    std::cout << "filesize=" << task->file_size() << std::endl;
     start_loader(task, 0, task->file_size());
     saver_->run();
 }
 
-void Momi::save(const std::string &str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask *task)
+void Momi::save(MomiTask* task, void* data, uint64_t start, uint64_t count)
 {
-    saver_->save(str, pos, count, timestamp, task, Saver::MsgType::Write);
+    saver_->save_task(task, data, start, count);
 }
 
-void Momi::notify_finished(MomiTask *task, uint32_t timestamp)
+void Momi::notify_finished(MomiTask *task)
 {
-    saver_->save("", 0, 0, timestamp, task, Saver::MsgType::Finish);
+    saver_->finish_task(task);
 }
 
 void Momi::start_loader(MomiTask *task, uint64_t start, uint64_t end)
@@ -98,7 +100,7 @@ bool MomiTask::remote_check()
 {
     CURL *curl;
     CURLcode res;
-    uint64_t filesize = 0;
+    long filesize = 0;
 
     curl = curl_easy_init();
     if (curl)
@@ -142,7 +144,8 @@ bool MomiTask::remote_check()
         }
 
         res = curl_easy_getinfo(curl, CURLINFO_CONTENT_LENGTH_DOWNLOAD_T, &filesize);
-        if (filesize>0)
+
+        if (filesize > 0)
         {
             std::cout<<curl_version()<<std::endl;
             std::cout << "filesize: " << filesize << " bytes" <<std::endl;
@@ -153,16 +156,14 @@ bool MomiTask::remote_check()
     return true;
 }
 
-void MomiTask::async_save(const std::string &buf, uint64_t start, uint64_t count)
+void MomiTask::async_save(void* buf, uint64_t start, uint64_t count)
 {
-    time_t ts = time(NULL);
-    momi_->save(buf, start, count, ts, this);
+    momi_->save(this, buf, start, count);
 }
 
 void MomiTask::notify_finished()
 {
-    time_t ts = time(NULL);
-    momi_->notify_finished(this, ts);
+    momi_->notify_finished(this);
 }
 
 void MomiTask::rename()
@@ -170,10 +171,50 @@ void MomiTask::rename()
     ::rename(tmpfilepath_.c_str(), filepath_.c_str());
 }
 
-void MomiTask::save(const std::string& str, uint64_t start, uint64_t count)
+void MomiTask::save(void* data, uint64_t start, uint64_t count)
 {
-    ::lseek(fd_, start, SEEK_SET);
-    ::write(fd_, str.c_str(), count);
+    if (::lseek(fd_, start, SEEK_SET) < 0)
+    {
+        std::cerr << "lseek error!" << std::endl;
+    }
+//    if (::write(fd_, str.c_str(), count) != count)
+//    {
+//        std::cerr << "write incomplete!" << std::endl;
+//    }
+
+    while (true)
+    {
+        ssize_t nwrite = ::write(fd_, data, count);
+        printf("count=%d, nwrite=%d\n", count, nwrite);
+        if (nwrite < 0)
+        {
+
+            std::cerr << "write error! " << strerror(errno) <<std::endl;
+            continue;
+        }
+        else if (nwrite < count)
+        {
+            std::cerr << "write incomplete!" << std::endl;
+            data += nwrite;
+            count -= nwrite;
+        }
+        else
+        {
+            break;
+        }
+    }
+
+//    printf("count=%d, nwrite=%d\n", count, nwrite);
+//    if (nwrite < 0)
+//    {
+//        std::cerr << "write error!" << std::endl;
+//        async_save(str, start, count);
+//    }
+//    else if (nwrite < count)
+//    {
+//        std::cerr << "write incomplete!" << std::endl;
+//        async_save(std::string(buf + nwrite), start + nwrite, count - nwrite);
+//    }
 }
 
 void MomiTask::save_meta_info()

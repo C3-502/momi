@@ -16,14 +16,16 @@ void Saver::run()
         std::unique_lock<std::mutex> lk(push_mutex_);
         push_cond_.wait(lk, [this]{ return !queue_.empty(); });
 
-        SaveNode* node = queue_.front();
+        SaverMsg* msg = queue_.front();
         queue_.pop_front();
-        MomiTask* task = node->task();
-        if (node->msg_type() == SaveNode::Write)
+        MomiTask* task = msg->task();
+        lk.unlock();
+        if (msg->msg_type() == SaverMsg::Write)
         {
-            task->save(node->str(), node->pos(), node->count());
+            SaveNode* node = msg->save_node();
+            task->save(node->data(), node->pos(), node->count());
         }
-        else if (node->msg_type() == SaveNode::Finish)
+        else if (msg->msg_type() == SaverMsg::Finish)
         {
             task->rename();
             break;
@@ -37,11 +39,20 @@ void Saver::run()
     std::cout << "download finish" << std::endl;
 }
 
-void Saver::save(const std::string& str, uint64_t pos, size_t count, uint32_t timestamp, MomiTask* task,  MsgType msg_type)
+void Saver::save_task(MomiTask *task, void *data, uint64_t start, uint64_t count)
 {
-    std::lock_guard<std::mutex> guard(push_mutex_);
-    SaveNode* node = new SaveNode(str, pos, count, timestamp, task, msg_type);
-    queue_.push_back(node);
+    time_t ts = time(NULL);
+    SaveNode* node = new SaveNode(data, start, count);
+    SaverMsg* msg = new SaverMsg(task, SaverMsg::Write, ts, node);
+    queue_.push_back(msg);
+    push_cond_.notify_one();
+}
+
+void Saver::finish_task(MomiTask *task)
+{
+    time_t ts = time(NULL);
+    SaverMsg* msg = new SaverMsg(task, SaverMsg::Finish, ts, nullptr);
+    queue_.push_back(msg);
     push_cond_.notify_one();
 }
 
