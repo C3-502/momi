@@ -56,7 +56,7 @@ public:
              const std::string& filename, int protocol, Momi* momi)
         : url_(url), output_path_(output_path), filename_(filename),
           protocol_(protocol), filepath_(output_path + filename), filesize_(0),
-          fd_(-1), status_(New), momi_(momi)
+          fd_(-1), status_(New), momi_(momi), download_size_(0)
     {
 
     }
@@ -87,6 +87,7 @@ private:
     int protocol_;
     std::string filepath_;
     std::string tmpfilepath_;
+    uint64_t download_size_;
     uint64_t filesize_;
     int fd_;
     MomiTaskStatus status_;

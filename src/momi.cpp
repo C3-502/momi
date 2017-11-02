@@ -177,10 +177,6 @@ void MomiTask::save(void* data, uint64_t start, uint64_t count)
     {
         std::cerr << "lseek error!" << std::endl;
     }
-//    if (::write(fd_, str.c_str(), count) != count)
-//    {
-//        std::cerr << "write incomplete!" << std::endl;
-//    }
 
     while (true)
     {
@@ -203,18 +199,9 @@ void MomiTask::save(void* data, uint64_t start, uint64_t count)
             break;
         }
     }
-
-//    printf("count=%d, nwrite=%d\n", count, nwrite);
-//    if (nwrite < 0)
-//    {
-//        std::cerr << "write error!" << std::endl;
-//        async_save(str, start, count);
-//    }
-//    else if (nwrite < count)
-//    {
-//        std::cerr << "write incomplete!" << std::endl;
-//        async_save(std::string(buf + nwrite), start + nwrite, count - nwrite);
-//    }
+    download_size_ += count;
+    double process = double(download_size_) / double(filesize_);
+    printf("process: %.2f%%\n", 100 * process);
 }
 
 void MomiTask::save_meta_info()

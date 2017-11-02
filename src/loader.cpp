@@ -47,9 +47,15 @@ private:
     void set_easy_curl_opt(CURL* curl)
     {
         const std::string& url = task_->url();
+        curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1);
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, CurlWorker::write_cb);
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, this);
+
+        char buf[64] = { 0 };
+        std::snprintf(buf, sizeof(buf), "%ld-%ld", start_, end_);
+        std::cout << "range: " << buf << std::endl;
+        curl_easy_setopt(curl, CURLOPT_RANGE, buf);
     }
 
     static size_t write_cb(void* ptr, size_t size, size_t count, void* data)
@@ -61,8 +67,6 @@ private:
         memcpy(buf, ptr, count);
         task->async_save(buf, pos, count);
         worker->add_current_pos(count);
-        double process = double(worker->current_pos()) / double(worker->end());
-        printf("process: %.2f%%\n", 100 * process);
         return size * count;
     }
 
@@ -215,8 +219,8 @@ static int timer_cb(CURLM* multi, long timeout, void* userp)
 
 }
 
-Loader::Loader(MomiTask *task, uint64_t start, uint64_t end)
-    : task_(task), start_(start), end_(end)
+Loader::Loader(MomiTask *task, uint64_t start, uint64_t end, uint32_t worker_size)
+    : task_(task), start_(start), end_(end), worker_size_(worker_size)
 {
 
 }
@@ -241,9 +245,19 @@ void HttpLoader::loader_work_func()
 {
     detail::CurlManager *curl_mgr = new detail::CurlManager;
     curl_mgr->init();
-    detail::CurlWorker* worker = new detail::CurlWorker(task_, start_, end_);
-    workers_.push_back(worker);
-    curl_mgr->add_worker(worker);
+
+    uint64_t count = (end_ - start_) / worker_size_;
+    for (uint32_t i = 0; i < worker_size_; ++i)
+    {
+        uint64_t start = i * count + start_;
+        uint64_t end = start + count;
+        if (i == worker_size_ - 1)
+            end = end_;
+        detail::CurlWorker* worker = new detail::CurlWorker(task_, start, end);
+        workers_.push_back(worker);
+        curl_mgr->add_worker(worker);
+    }
+
     curl_mgr->start();
     status_ = Complete;
     task_->update_status();

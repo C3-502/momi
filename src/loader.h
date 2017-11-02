@@ -19,7 +19,7 @@ public:
     };
 
 public:
-    explicit Loader(MomiTask* task, uint64_t start, uint64_t end);
+    explicit Loader(MomiTask* task, uint64_t start, uint64_t end, uint32_t worker_size=10);
 	virtual ~Loader() {}
 
 	uint32_t start() const { return start_; }
@@ -40,6 +40,7 @@ protected:
 
 
 protected:
+    uint32_t worker_size_;
     uint64_t start_;
     uint64_t end_;
     MomiTask* task_;

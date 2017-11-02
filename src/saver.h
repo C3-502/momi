@@ -8,6 +8,7 @@
 #define _SAVER_H
 
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <condition_variable>
 #include <list>
@@ -23,7 +24,7 @@ public:
         : data_(data), pos_(pos), count_(count)
     {}
 
-    ~SaveNode() {}
+    ~SaveNode() { delete[] data_; }
 
     void* data() { return data_; }
     uint64_t pos() { return pos_; }
@@ -72,7 +73,7 @@ public:
     void finish_task(MomiTask* task);
 
 private:
-    std::list<SaverMsg*> queue_;
+    std::list<std::shared_ptr<SaverMsg>> queue_;
     std::mutex push_mutex_;
     std::condition_variable push_cond_;
 };
